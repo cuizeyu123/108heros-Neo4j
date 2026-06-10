@@ -1,6 +1,16 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Graph } from '@antv/g6';
 import type { GraphData, HeroNode } from '../types';
+import {
+  GRAPH_COLORS,
+  getRelationColor,
+  getTierColor,
+  FORCE_LAYOUT,
+  COMMON_BEHAVIORS,
+  COMMON_NODE_STATE,
+  COMMON_EDGE_STATE,
+  resumeSimulation,
+} from '../graphConfig';
 
 interface Props {
   data: GraphData | null;
@@ -9,31 +19,16 @@ interface Props {
   highlightNodeId?: string | null;
 }
 
-const GOLD = '#C9A96E';
-const GOLD_LIGHT = '#DBC594';
-const VERMILLION = '#C43D3D';
-const JADE = '#6B8E6B';
-const AMBER = '#C8843D';
-const INK = '#5C5548';
-const PARCHMENT_BG = '#1A1410';
-const CREAM = '#EBE5D9';
-
-function getRelationColor(relType: string): string {
-  switch (relType) {
-    case '兄': case '弟': case '姐': case '妹': case '父': case '子':
-      return GOLD;
-    case '主': case '仆':
-      return AMBER;
-    case '师': case '徒':
-      return JADE;
-    default:
-      return AMBER;
-  }
-}
-
-function getTierColor(tier: string): string {
-  return tier === '天罡' ? GOLD : JADE;
-}
+const {
+  gold: GOLD,
+  goldLight: GOLD_LIGHT,
+  vermillion: VERMILLION,
+  jade: JADE,
+  amber: AMBER,
+  ink: INK,
+  parchmentBg: PARCHMENT_BG,
+  cream: CREAM,
+} = GRAPH_COLORS;
 
 export default function KnowledgeGraph({ data, loading, onNodeClick, highlightNodeId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);

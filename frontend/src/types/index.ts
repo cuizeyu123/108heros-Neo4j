@@ -1,3 +1,12 @@
+/**
+ * 水浒传知识图谱 — TypeScript 类型定义
+ * 包含 108 将图谱类型和动态故事抽取类型
+ */
+
+// ═══════════════════════════════════════════════════════════
+// 108将图谱类型（现有）
+// ═══════════════════════════════════════════════════════════
+
 export interface HeroNode {
   id: string;
   type: "hero";
@@ -72,3 +81,56 @@ export interface HeroDetail {
   local_image: string;
   relations: HeroRelation[];
 }
+
+// ═══════════════════════════════════════════════════════════
+// 动态故事抽取类型（新增）
+// ═══════════════════════════════════════════════════════════
+
+/** 实体提及位置（用于原文高亮） */
+export interface EntityMention {
+  start: number;
+  end: number;
+}
+
+/** 抽取出的实体节点 */
+export interface StoryNode {
+  id: string;
+  name: string;
+  type: "人物" | "地点" | "道具";
+  mentions: EntityMention[];
+}
+
+/** 抽取出的关系边 */
+export interface StoryEdge {
+  id: string;
+  source: string;
+  target: string;
+  relation: string;
+  evidence: string;
+}
+
+/** POST /api/extract 响应体 */
+export interface ExtractResponse {
+  nodes: StoryNode[];
+  edges: StoryEdge[];
+  entity_mentions: Record<string, EntityMention[]>;
+}
+
+/** 抽取请求状态 */
+export interface ExtractState {
+  text: string;
+  result: ExtractResponse | null;
+  loading: boolean;
+  error: string | null;
+}
+
+/** 高亮文本段类型（用于渲染高亮原文） */
+export type HighlightSegment =
+  | { type: "text"; content: string }
+  | { type: "entity"; content: string; entityType: StoryNode["type"]; entityName: string };
+
+// ═══════════════════════════════════════════════════════════
+// 导航 Tab 类型
+// ═══════════════════════════════════════════════════════════
+
+export type NavTab = "heroes-graph" | "story-extract";

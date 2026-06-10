@@ -1,6 +1,6 @@
 """
 水浒传108将知识图谱 - Flask API 后端
-提供图谱数据、英雄详情、图片服务
+提供图谱数据、英雄详情、图片服务、动态文本实体抽取
 """
 
 import json
@@ -10,6 +10,8 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+
+from nlp_extractor import extract_entities_and_relations
 
 app = Flask(__name__)
 CORS(app)
@@ -313,6 +315,53 @@ def serve_image(filename):
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.route("/api/extract", methods=["POST"])
+def extract_entities():
+    """
+    动态故事片段实体与关系抽取接口。
+
+    请求体 JSON:
+        {
+            "text": "武松在景阳冈上打死了老虎...",
+            "method": "local"  // 可选: "local" | "llm"
+        }
+
+    返回格式:
+        {
+            "nodes": [
+                {"id": "entity_xxx", "name": "武松", "type": "人物", "mentions": [{"start": 0, "end": 2}]},
+                ...
+            ],
+            "edges": [
+                {"id": "rel_xxx", "source": "entity_xxx", "target": "entity_yyy", "relation": "对决", "evidence": "..."},
+                ...
+            ],
+            "entity_mentions": {
+                "武松": [{"start": 0, "end": 2}],
+                ...
+            }
+        }
+    """
+    data = request.get_json(silent=True)
+    if not data or "text" not in data:
+        return jsonify({"error": "缺少 text 字段"}), 400
+
+    text = data["text"].strip()
+    if not text:
+        return jsonify({"error": "text 不能为空"}), 400
+    if len(text) > 10000:
+        return jsonify({"error": "文本过长，单次最多支持 10000 字"}), 400
+
+    method = data.get("method", "local")
+    llm_config = data.get("llm_config", None)
+
+    try:
+        result = extract_entities_and_relations(text, method=method, llm_config=llm_config)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"抽取失败: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
