@@ -1,21 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;500;600;700;900&family=Ma+Shan+Zheng&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #0F172A;
-  --color-bg-secondary: #1E293B;
-  --color-bg-card: #1E293B;
-  --color-bg-card-hover: #273548;
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
-  --color-accent-gold: #D4A574;
-  --color-accent-amber: #F59E0B;
-  --color-accent-indigo: #6366F1;
-  --color-accent-emerald: #10B981;
-  --color-accent-purple: #8B5CF6;
-  --color-border: #334155;
-  --color-border-light: #475569;
+  /* 北宋卷轴 · 梁山势力图 — 色彩体系 */
+  --color-bg-primary: #1A1410;
+  --color-bg-secondary: #231D15;
+  --color-bg-card: #231D15;
+  --color-bg-card-hover: #2E261C;
+  --color-bg-parchment: #1E1812;
+
+  --color-text-primary: #EBE5D9;
+  --color-text-secondary: #A09888;
+  --color-text-muted: #706858;
+
+  /* 金 — 天罡 / 高亮 / 核心关系 */
+  --color-accent-gold: #C9A96E;
+  --color-accent-gold-light: #DBC594;
+
+  /* 朱砂 — 封印 / 关键标记 / 敌对关系 */
+  --color-accent-vermillion: #C43D3D;
+  --color-accent-vermillion-light: #D46565;
+
+  /* 墨 — 文字 / 线条 */
+  --color-ink: #2D2A26;
+  --color-ink-light: #5C5548;
+
+  /* 玉 — 地煞 / 辅助信息 */
+  --color-accent-jade: #6B8E6B;
+  --color-accent-jade-light: #8AAA8A;
+
+  /* 琥珀 — 兄弟/师徒等友善关系 */
+  --color-accent-amber: #C8843D;
+  --color-accent-amber-light: #DCA06A;
+
+  /* 边框与分割 */
+  --color-border: #3D3428;
+  --color-border-light: #5C4E3A;
+  --color-border-gold: rgba(201, 169, 110, 0.3);
 }
 
 * {
@@ -33,7 +54,141 @@ html, body, #root {
   color: var(--color-text-primary);
 }
 
-::-webkit-scrollbar { width: 6px; }
+/* ─── 卷轴纸张纹理背景 ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    /* 宣纸纹理 */
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(139, 115, 85, 0.015) 2px,
+      rgba(139, 115, 85, 0.015) 4px
+    ),
+    /* 纤维纹理 */
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 3px,
+      rgba(139, 115, 85, 0.01) 3px,
+      rgba(139, 115, 85, 0.01) 6px
+    ),
+    /* 不规则墨渍 */
+    radial-gradient(ellipse at 15% 20%, rgba(139, 115, 85, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 75%, rgba(139, 115, 85, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(139, 115, 85, 0.03) 0%, transparent 70%),
+    /* 边缘做旧 — 四边渐暗 */
+    radial-gradient(ellipse at 50% 0%, rgba(15, 11, 8, 0.7) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(15, 11, 8, 0.7) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 50%, rgba(15, 11, 8, 0.5) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 50%, rgba(15, 11, 8, 0.5) 0%, transparent 40%);
+}
+
+/* ─── 卷轴装饰边框 ─── */
+.scroll-border-top,
+.scroll-border-bottom {
+  position: relative;
+}
+.scroll-border-top::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-accent-gold) 15%,
+    var(--color-accent-gold) 85%,
+    transparent 100%
+  );
+  opacity: 0.6;
+}
+
+/* ─── 古风印章效果 ─── */
+.seal-stamp {
+  position: relative;
+  color: var(--color-accent-vermillion);
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 900;
+  border: 2px solid var(--color-accent-vermillion);
+  transform: rotate(-3deg);
+  text-shadow: 1px 1px 0 rgba(196, 61, 61, 0.3);
+}
+.seal-stamp::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--color-accent-vermillion);
+  opacity: 0.4;
+}
+
+/* ─── 描金边框 ─── */
+.border-gilt {
+  border-color: var(--color-border-gold);
+  box-shadow:
+    inset 0 1px 0 0 rgba(201, 169, 110, 0.08),
+    0 1px 0 0 rgba(201, 169, 110, 0.06);
+}
+
+/* ─── 关系连线类型 ─── */
+.relation-hostile {
+  color: var(--color-accent-vermillion);
+}
+.relation-friendly {
+  color: var(--color-accent-amber);
+}
+.relation-family {
+  color: var(--color-accent-gold);
+}
+.relation-neutral {
+  color: var(--color-accent-jade);
+}
+
+/* ─── 卷轴题签 ─── */
+.scroll-title {
+  font-family: 'Noto Serif TC', serif;
+  letter-spacing: 0.15em;
+  background: linear-gradient(180deg, var(--color-accent-gold-light) 0%, var(--color-accent-gold) 50%, #A08050 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 2px rgba(201, 169, 110, 0.3));
+}
+
+/* ─── 滚动条（古风定制） ─── */
+::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--color-bg-primary); }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-border-light); }
+::-webkit-scrollbar-thumb { background: var(--color-border-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent-gold); }
+
+/* ─── 动画 ─── */
+@keyframes candle-flicker {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+@keyframes ink-spread {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes seal-press {
+  0% { transform: scale(1.3) rotate(-8deg); opacity: 0; }
+  60% { transform: scale(0.95) rotate(-2deg); opacity: 0.9; }
+  100% { transform: scale(1) rotate(-3deg); opacity: 0.85; }
+}
+.animate-candle { animation: candle-flicker 3s ease-in-out infinite; }
+.animate-ink { animation: ink-spread 0.6s ease-out forwards; }
+.animate-seal { animation: seal-press 0.5s ease-out forwards; }
+
+/* ─── 卷轴圆角体系 ─── */
+:root {
+  --radius-scroll: 6px;
+  --radius-seal: 2px;
+}

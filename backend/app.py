@@ -52,6 +52,50 @@ def load_heroes():
     return heroes
 
 
+def _extract_social_relations(notes, my_name, name_to_hero):
+    """
+    从备考文本中提取该英雄的社会关系。
+    返回 [(source_name, target_name, rel_type), ...] 列表。
+    """
+    results = []
+    hero_names_sorted = sorted(name_to_hero.keys(), key=len, reverse=True)
+
+    for target_name in hero_names_sorted:
+        if target_name == my_name:
+            continue
+        idx = notes.find(target_name)
+        if idx == -1:
+            continue
+
+        after = notes[idx + len(target_name):]
+
+        # "...[target]之(兄|弟|姐|妹|父|子|主|师|徒)"
+        m = re.match(r'^之(兄|弟|姐|妹|父|子|主|师|徒)', after)
+        if m:
+            results.append((my_name, target_name, m.group(1)))
+            continue
+
+        # "...[target]的(妹夫|妻舅|姐夫|妹婿|姑表)"
+        m = re.match(r'^的(妹夫|妻舅|姐夫|妹婿|姑表)', after)
+        if m:
+            results.append((my_name, target_name, "亲族"))
+            continue
+
+        # "...[target]称他/她为YYY" → target称hero为YYY
+        m = re.match(r'^称[他她]为(.+?)(?:[，,]|$)', after)
+        if m:
+            results.append((target_name, my_name, m.group(1)))
+            continue
+
+    # "与XXX为XX兄弟"
+    for m in re.finditer(r'与([一-龥]{2,3})为', notes):
+        tgt_name = m.group(1)
+        if tgt_name in name_to_hero and tgt_name != my_name:
+            results.append((my_name, tgt_name, "兄弟"))
+
+    return results
+
+
 def load_graph_data():
     """构建图谱数据（nodes + edges），适配 AntV G6 格式"""
     global _graph_cache
@@ -59,6 +103,7 @@ def load_graph_data():
         return _graph_cache
 
     heroes = load_heroes()
+    name_to_hero = {h["姓名"]: h for h in heroes}
 
     nodes = []
     edges = []
@@ -81,33 +126,10 @@ def load_graph_data():
                 "position": h.get("梁山职位", ""),
             },
             "style": {
-                "borderColor": "#D4A574" if h["座次"] <= 36 else "#A8B8C8",
+                "borderColor": "#C9A96E" if h["座次"] <= 36 else "#6B8E6B",
             },
         })
         node_ids.add(hero_id)
-
-    # Star 节点 (108 unique stars)
-    for h in heroes:
-        star_id = f"star_{h['星宿']}"
-        if star_id not in node_ids:
-            nodes.append({
-                "id": star_id,
-                "type": "star",
-                "data": {"name": h["星宿"]},
-            })
-            node_ids.add(star_id)
-
-        edge_key = f"{h['座次']}_belongs_to_star"
-        if edge_key not in edge_ids:
-            edges.append({
-                "id": edge_key,
-                "source": f"hero_{h['座次']}",
-                "target": star_id,
-                "type": "belongs_to",
-                "data": {"label": "星宿"},
-                "style": {"stroke": "#6366F1", "lineWidth": 1, "opacity": 0.6},
-            })
-            edge_ids.add(edge_key)
 
     # Tier 节点 (天罡36 / 地煞72)
     tier_ids = {"三十六天罡": "tier_tiangang", "七十二地煞": "tier_disha"}
@@ -129,7 +151,7 @@ def load_graph_data():
                 "target": tier_id,
                 "type": "belongs_to_tier",
                 "data": {"label": tier_name},
-                "style": {"stroke": "#8B5CF6", "lineWidth": 1, "opacity": 0.5},
+                "style": {"stroke": "#5C5548", "lineWidth": 1, "opacity": 0.35},
             })
             edge_ids.add(edge_key)
 
@@ -154,59 +176,29 @@ def load_graph_data():
                     "target": pos_id,
                     "type": "holds_position",
                     "data": {"label": "梁山职位"},
-                    "style": {"stroke": "#10B981", "lineWidth": 1, "opacity": 0.5},
+                    "style": {"stroke": "#5C5548", "lineWidth": 1, "opacity": 0.35},
                 })
                 edge_ids.add(edge_key)
 
-    # Social relations (从备考字段提取)
+    # Social relations
     for h in heroes:
         notes = h.get("备考", "")
-        name = h["姓名"]
         if not notes:
             continue
-
-        # "XXX之兄/弟/姐/妹/父/子/主/师/徒"
-        for m in re.finditer(r"([一-龥]{2,4})之(兄|弟|姐|妹|父|子|主|师|徒)", notes):
-            relative = m.group(1)
-            rel_type = m.group(2)
-            if relative != name:
-                # 查找relative对应的hero number
-                target = next(
-                    (hh for hh in heroes if hh["姓名"] == relative), None
-                )
-                if target:
-                    edge_key = f"{h['座次']}_social_{target['座次']}_{rel_type}"
-                    if edge_key not in edge_ids:
-                        edges.append({
-                            "id": edge_key,
-                            "source": f"hero_{h['座次']}",
-                            "target": f"hero_{target['座次']}",
-                            "type": "social_relation",
-                            "data": {"label": rel_type},
-                            "style": {"stroke": "#F59E0B", "lineWidth": 1.5, "opacity": 0.8},
-                        })
-                        edge_ids.add(edge_key)
-
-        # "XXX称他/她为YYY"
-        for m in re.finditer(r"([一-龥]{2,4})称[他她]为(\w+)", notes):
-            person = m.group(1)
-            role = m.group(2)
-            if person != name:
-                target = next(
-                    (hh for hh in heroes if hh["姓名"] == person), None
-                )
-                if target:
-                    edge_key = f"{target['座次']}_social_{h['座次']}_{role}"
-                    if edge_key not in edge_ids:
-                        edges.append({
-                            "id": edge_key,
-                            "source": f"hero_{target['座次']}",
-                            "target": f"hero_{h['座次']}",
-                            "type": "social_relation",
-                            "data": {"label": role},
-                            "style": {"stroke": "#F59E0B", "lineWidth": 1.5, "opacity": 0.8},
-                        })
-                        edge_ids.add(edge_key)
+        for src_name, tgt_name, rel_type in _extract_social_relations(notes, h["姓名"], name_to_hero):
+            src = name_to_hero[src_name]
+            tgt = name_to_hero[tgt_name]
+            edge_key = f"{src['座次']}_social_{tgt['座次']}_{rel_type}"
+            if edge_key not in edge_ids:
+                edges.append({
+                    "id": edge_key,
+                    "source": f"hero_{src['座次']}",
+                    "target": f"hero_{tgt['座次']}",
+                    "type": "social_relation",
+                    "data": {"label": rel_type},
+                    "style": {"stroke": "#C8843D", "lineWidth": 1.5, "opacity": 0.8},
+                })
+                edge_ids.add(edge_key)
 
     _graph_cache = {"nodes": nodes, "edges": edges}
     return _graph_cache
@@ -229,32 +221,52 @@ def get_hero(name):
     if hero is None:
         return jsonify({"error": "英雄不存在"}), 404
 
-    # 附加社会关系
     hero_with_relations = dict(hero)
     hero_with_relations["relations"] = extract_relations(hero, heroes)
     return jsonify(hero_with_relations)
 
 
 def extract_relations(hero, all_heroes):
-    """从备考字段提取该英雄的社会关系"""
-    notes = hero.get("备考", "")
-    name = hero["姓名"]
+    """从备考字段提取该英雄的社会关系（双向查找）"""
+    name_to_hero = {h["姓名"]: h for h in all_heroes}
     relations = []
+    seen = set()
 
-    for m in re.finditer(r"([一-龥]{2,4})之(兄|弟|姐|妹|父|子|主|师|徒)", notes):
-        relative = m.group(1)
-        rel_type = m.group(2)
-        if relative != name:
-            target = next(
-                (h for h in all_heroes if h["姓名"] == relative), None
-            )
-            if target:
-                relations.append({
-                    "target_name": relative,
-                    "target_number": target["座次"],
-                    "relation": rel_type,
-                    "target_image": f"http://localhost:5000/api/images/{target['local_image']}",
-                })
+    def add_rel(target_name, rel_type):
+        key = (target_name, rel_type)
+        if key in seen:
+            return
+        seen.add(key)
+        target = name_to_hero.get(target_name)
+        if target:
+            relations.append({
+                "target_name": target_name,
+                "target_number": target["座次"],
+                "relation": rel_type,
+                "target_image": f"http://localhost:5000/api/images/{target['local_image']}",
+            })
+
+    # 1) 从该英雄自己的备考中提取
+    own_notes = hero.get("备考", "")
+    if own_notes:
+        for src_name, tgt_name, rel_type in _extract_social_relations(own_notes, hero["姓名"], name_to_hero):
+            if src_name == hero["姓名"]:
+                add_rel(tgt_name, rel_type)
+            elif tgt_name == hero["姓名"]:
+                add_rel(src_name, rel_type)
+
+    # 2) 从其他英雄的备考中查找提及该英雄的关系
+    for other in all_heroes:
+        other_notes = other.get("备考", "")
+        if not other_notes or other["姓名"] == hero["姓名"]:
+            continue
+        if hero["姓名"] not in other_notes:
+            continue
+        for src_name, tgt_name, rel_type in _extract_social_relations(other_notes, other["姓名"], name_to_hero):
+            if src_name == hero["姓名"]:
+                add_rel(tgt_name, rel_type)
+            elif tgt_name == hero["姓名"]:
+                add_rel(src_name, rel_type)
 
     return relations
 
@@ -288,13 +300,11 @@ def search_heroes():
 @app.route("/api/images/<filename>")
 def serve_image(filename):
     """提供本地英雄画像"""
-    # 安全检查：只允许jpg/png
     if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
         return jsonify({"error": "不支持的图片格式"}), 400
 
     image_path = IMAGES_DIR / filename
     if not image_path.exists():
-        # 尝试按编号查找
         return jsonify({"error": "图片不存在"}), 404
 
     return send_file(str(image_path), mimetype="image/jpeg")
